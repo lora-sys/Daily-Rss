@@ -12,7 +12,8 @@ export const helloWorld = inngest.createFunction(
 
 export const sendDailyNews = inngest.createFunction(
   { id: "send-daily-news" },
-  { event: "daily/news" },
+  // { event: "daily/news" },
+  { cron: "15 4 * * *" }, // 定时任务，北京时间12点15执行
   async ({ event, step }) => {
     //TODO
     // 从多个RSS 源获取新闻
@@ -37,7 +38,13 @@ export const sendDailyNews = inngest.createFunction(
     const { data, error } = await step.run("create-email", async () => {
       const result = await resend.broadcasts.create({
         from: "onboarding@resend.dev",
-        subject: `"Daily Briefs" ${new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })}`,
+        subject:
+          "Daily Briefs - " +
+          new Date().toLocaleDateString("zh-CN", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
         segmentId: "d7d093bd-99af-4ef9-b076-15b9999d105c",
         html: newSummary.html,
       });
