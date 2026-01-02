@@ -25,6 +25,7 @@ A daily AI news briefing platform that delivers the latest AI insights directly 
 ⚠️ **Important**: You must have your own custom domain configured to send emails. This is required by email service providers for proper DNS and SPF/DKIM authentication.
 
 **Domain Recommendation**: You can purchase a domain from [硅云 (GICloud)](https://www.gicloud.com) - a reliable Chinese domain registrar.
+* free domain registration*
 
 ## Getting Started
 
