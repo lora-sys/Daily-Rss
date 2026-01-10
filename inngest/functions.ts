@@ -30,7 +30,12 @@ export const sendDailyNews = inngest.createFunction(
   { cron: "15 4 * * *" }, // 北京时间 12:15 执行
   async ({ step }) => {
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date();
+      const todayStr = today.toISOString().split("T")[0];
+      // 可以调整这个值来包含前几天的文章，例如设置为3天前的文章也包含进来
+      const startDate = new Date();
+      startDate.setDate(today.getDate() - 2); // 包含过去3天的文章 (今天-2天 = 3天的数据)
+      const startDateStr = startDate.toISOString().split("T")[0];
 
       // ========== Step 1: 抓取新闻 ==========
       const fetchResult = await step.run("fetch-news", async () => {
@@ -54,13 +59,23 @@ export const sendDailyNews = inngest.createFunction(
         }
       });
 
-      // ========== Step 2: 从数据库获取今天的文章用于邮件 ==========
-      const todayArticles = await step.run("get-today-articles", async () => {
-        console.log("📰 获取今天的文章...");
+      // ========== Step 2: 从数据库获取过去几天的文章用于邮件 ==========
+      const recentArticles = await step.run("get-recent-articles", async () => {
+        console.log(`📰 获取从 ${startDateStr} 到 ${todayStr} 的文章...`);
         try {
-          const articles = await getArticlesByDate(today);
-          console.log(`✅ 获取到 ${articles.length} 篇文章`);
-          return articles;
+          // 获取过去几天的文章
+          const allArticles = [];
+          const currentDate = new Date(startDate);
+
+          while (currentDate <= today) {
+            const dateStr = currentDate.toISOString().split("T")[0];
+            const dailyArticles = await getArticlesByDate(dateStr);
+            allArticles.push(...dailyArticles);
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+
+          console.log(`✅ 获取到 ${allArticles.length} 篇文章`);
+          return allArticles;
         } catch (error) {
           console.error("❌ 获取文章失败:", error);
           throw error;
@@ -72,7 +87,7 @@ export const sendDailyNews = inngest.createFunction(
         console.log("📝 格式化新闻摘要...");
         try {
           // 转换为 NewsItem 格式
-          const newsItems = todayArticles.map((article) => ({
+          const newsItems = recentArticles.map((article) => ({
             title: article.title,
             link: article.link,
             pubDate: article.pub_date,
@@ -80,7 +95,11 @@ export const sendDailyNews = inngest.createFunction(
             source: article.source_name,
           }));
 
-          const formatted = formatNewsSummary(newsItems);
+          // 限制新闻项目最多为50个，避免邮件过长
+          const limitedNewsItems = newsItems.slice(0, 50);
+          console.log(`📊 限制新闻项目数量至最多50个，实际使用 ${limitedNewsItems.length} 个`);
+
+          const formatted = formatNewsSummary(limitedNewsItems);
           console.log("✅ 摘要格式化完成");
           return formatted;
         } catch (error) {
